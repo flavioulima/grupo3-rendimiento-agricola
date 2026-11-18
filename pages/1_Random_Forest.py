@@ -24,6 +24,9 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 
 st.set_page_config(page_title="Random Forest – Escenarios", layout="wide", page_icon="🌳")
+import sys as _s0, os as _o0
+_s0.path.insert(0, _o0.path.dirname(_o0.path.dirname(_o0.path.abspath(__file__))))
+from estilo import AYUDA, explica  # noqa: E402
 
 VERDE = "#2C5F2D"
 VERDE_CLARO = "#97BC62"
@@ -43,7 +46,7 @@ NUM = ["Farm_Area", "Fertilizer", "Pesticide", "Water_Usage"]
 CAT = ["Crop_Type", "Irrigation_Type", "Soil_Type", "Season"]
 
 st.sidebar.header("1. Datos")
-archivo = st.sidebar.file_uploader("Sube el CSV (opcional)", type=["csv"])
+archivo = st.sidebar.file_uploader("Sube el CSV (opcional)", type=["csv"], help=AYUDA["csv"])
 RUTA_DEFECTO = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "agriculture_dataset_synthetic.csv")  # el CSV está en la carpeta raíz de la app
 
 if archivo is not None:
@@ -65,11 +68,11 @@ X_full = pd.get_dummies(df[NUM + CAT], columns=CAT).astype(float)
 # BLOQUE 2. HIPERPARÁMETROS DEL RANDOM FOREST (iguales para los 3 escenarios)
 # ======================================================================
 st.sidebar.header("2. Hiperparámetros del Random Forest")
-n_arboles = st.sidebar.slider("n_estimators (número de árboles)", 100, 800, 500, 100)
-prof_opc = st.sidebar.selectbox("max_depth (profundidad máxima)", ["Sin límite", 5, 10, 15], index=0)
+n_arboles = st.sidebar.slider("n_estimators (número de árboles)", 100, 800, 500, 100, help=AYUDA["n_estimators"])
+prof_opc = st.sidebar.selectbox("max_depth (profundidad máxima)", ["Sin límite", 5, 10, 15], index=0, help=AYUDA["max_depth"])
 max_depth = None if prof_opc == "Sin límite" else int(prof_opc)
-min_hoja = st.sidebar.slider("min_samples_leaf (mínimo de fincas por hoja)", 1, 10, 1)
-test_size = st.sidebar.slider("Tamaño del conjunto de prueba", 0.1, 0.4, 0.2, 0.05)
+min_hoja = st.sidebar.slider("min_samples_leaf (mínimo de fincas por hoja)", 1, 10, 1, help=AYUDA["min_samples_leaf"])
+test_size = st.sidebar.slider("Tamaño del conjunto de prueba", 0.1, 0.4, 0.2, 0.05, help=AYUDA["test_size"])
 SEMILLA = 42
 
 # El MISMO split para los 3 escenarios -> la comparación es justa
@@ -141,7 +144,8 @@ def entrenar_escenarios(_df, _X, n_arboles, max_depth, min_hoja, test_size, meto
 
 
 metodo_red = st.sidebar.radio("Escenario 2: método de reducción de dimensiones",
-                              ["Eliminar Water_Usage (VIF > 10)", "PCA (3 componentes)"])
+                              ["Eliminar Water_Usage (VIF > 10)", "PCA (3 componentes)"],
+                              help="Dos formas de quitar información repetida: borrar el agua (que repite al área) o resumir las variables numéricas con PCA.")
 
 RES = entrenar_escenarios(df, X_full, n_arboles, max_depth, min_hoja, test_size, metodo_red)
 y_test = df.loc[idx_test, "Yield"]
@@ -165,7 +169,7 @@ tabla = pd.DataFrame(tabla).set_index("Escenario")
 # INTERFAZ
 # ======================================================================
 # Encabezado con el nombre del alumno (para la captura que pide el examen)
-nombre = st.sidebar.text_input("Nombre para el encabezado", "Grupo 3 · Bajalqui De la Cruz, L. M. · De La Cuba Oliva, F. A. · Perdicci Taboada, G. G.")
+nombre = st.sidebar.text_input("Nombre para el encabezado", help=AYUDA["nombre"], value="Grupo 3 · Bajalqui De la Cruz, L. M. · De La Cuba Oliva, F. A. · Perdicci Taboada, G. G.")
 st.markdown(f"<div style='background:#2C5F2D;color:white;padding:10px 16px;border-radius:8px'>"
             f"<b>{nombre}</b> · Modelamiento predictivo de datos · Random Forest – 3 escenarios</div>",
             unsafe_allow_html=True)
@@ -194,10 +198,10 @@ tab_ctx, tab_esc, tab_sim, tab_concl = st.tabs(
 # ----------------------------------------------------------------------
 with tab_ctx:
     c1, c2, c3, c4 = st.columns(4)
-    c1.metric("Explotaciones", f"{len(df):,}")
-    c2.metric("Yield promedio", f"{df['Yield'].mean():.2f} t")
-    c3.metric("Yield por acre promedio", f"{df['Yield_per_acre'].mean():.3f} t/acre")
-    c4.metric("Corr. Farm_Area ↔ Yield", f"{df['Farm_Area'].corr(df['Yield']):.3f}")
+    c1.metric("Explotaciones", f"{len(df):,}", help="Número de fincas del dataset.")
+    c2.metric("Yield promedio", f"{df['Yield'].mean():.2f} t", help="Producción promedio por finca, en toneladas.")
+    c3.metric("Yield por acre promedio", f"{df['Yield_per_acre'].mean():.3f} t/acre", help="Producción dividida entre el área: permite comparar fincas grandes y pequeñas.")
+    c4.metric("Corr. Farm_Area ↔ Yield", f"{df['Farm_Area'].corr(df['Yield']):.3f}", help=AYUDA["corr"])
 
     st.subheader("Correlación de Pearson con el rendimiento")
     corr = df[NUM + ["Yield", "Yield_per_acre"]].corr()[["Yield", "Yield_per_acre"]].drop(["Yield", "Yield_per_acre"])
@@ -214,8 +218,10 @@ with tab_ctx:
         ax.set_xlabel("Correlación de Pearson")
         ax.legend(fontsize=8)
         st.pyplot(fig)
+        explica("Barra oscura = relación con la producción total; barra clara = con la producción por acre. El área tiene una "
+                "barra enorme con la total pero casi nula con la por acre: **las fincas grandes producen más solo por ser grandes**.")
 
-    st.subheader("Multicolinealidad (VIF) de las variables numéricas")
+    st.subheader("Multicolinealidad (VIF) de las variables numéricas", help=AYUDA["VIF"])
     vif = []
     for col in NUM:
         otras = [c for c in NUM if c != col]
@@ -238,6 +244,8 @@ with tab_ctx:
         df.groupby("Crop_Type")["Yield_per_acre"].mean().sort_values().plot(kind="barh", ax=ax, color=VERDE)
         ax.set_xlabel("t/acre promedio")
         st.pyplot(fig)
+    explica("Promedio de toneladas por acre según el tipo de riego (izquierda) y el cultivo (derecha). Las diferencias muestran "
+            "que el **manejo** (qué se siembra y cómo se riega) sí cambia el rendimiento, más allá del tamaño.")
 
 # ----------------------------------------------------------------------
 # TAB 2: los tres escenarios
@@ -246,12 +254,12 @@ with tab_esc:
     st.subheader("Comparación de los tres escenarios (conjunto de prueba)")
     st.dataframe(tabla.style.format("{:.3f}", subset=["R²", "R² entrenamiento", "Brecha R² (train − test)"])
                  .format("{:.2f}", subset=["RMSE (t)", "MAE (t)"]), use_container_width=True)
-    st.caption("Referencia del informe EC1 (Tabla 4.1): Regresión lineal R² = 0.919 · Random Forest R² = 0.829 · "
-               "XGBoost R² = 0.947. La brecha train − test grande indica sobreajuste.")
+    st.caption("Referencia del informe (Tabla 4.1, mismas condiciones): Regresión lineal R² = 0.919 · Random Forest R² = 0.894 · "
+               "XGBoost R² = 0.938. Una brecha train − test grande indica sobreajuste (el modelo memorizó en vez de aprender).")
 
     fig, axes = plt.subplots(1, 2, figsize=(11, 3.3))
     tabla["R²"].plot(kind="bar", ax=axes[0], color=[VERDE_CLARO, VERDE_CLARO, VERDE])
-    axes[0].axhline(0.947, color=ROJO, linestyle="--", linewidth=1, label="XGBoost EC1 (0.947)")
+    axes[0].axhline(0.938, color=ROJO, linestyle="--", linewidth=1, label="XGBoost del informe (0.938)")
     axes[0].set_ylim(0.7, 1.0)
     axes[0].set_title("R² en prueba")
     axes[0].set_xticklabels(["E1", "E2", "E3"], rotation=0)
@@ -261,6 +269,9 @@ with tab_esc:
     axes[1].set_xticklabels(["E1", "E2", "E3"], rotation=0)
     fig.tight_layout()
     st.pyplot(fig)
+    explica("Se prueban 3 formas de usar el Random Forest. **E1**: con todas las variables. **E2**: quitando la información "
+            "repetida. **E3**: predecir toneladas por acre y multiplicar por el área (como sueldo por hora × horas). A la izquierda, "
+            "más alto es mejor (R²); a la derecha, más bajo es mejor (error). E3 gana en ambos.")
 
     DESCRIPCION = {
         "E1": "Réplica del modelo de la EC1: las 8 variables originales (área, insumos, agua y categóricas) "
@@ -275,10 +286,10 @@ with tab_esc:
             st.write(DESCRIPCION[k])
             m = tabla.loc[NOMBRES[k]]
             a, b, c, d = st.columns(4)
-            a.metric("R² prueba", f"{m['R²']:.3f}")
-            b.metric("RMSE", f"{m['RMSE (t)']:.2f} t")
-            c.metric("MAE", f"{m['MAE (t)']:.2f} t")
-            d.metric("N.° variables", int(m["N.° variables"]))
+            a.metric("R² prueba", f"{m['R²']:.3f}", help=AYUDA["R2"])
+            b.metric("RMSE", f"{m['RMSE (t)']:.2f} t", help=AYUDA["RMSE"])
+            c.metric("MAE", f"{m['MAE (t)']:.2f} t", help=AYUDA["MAE"])
+            d.metric("N.° variables", int(m["N.° variables"]), help="Columnas que usa el modelo (cada categoría cuenta como una columna sí/no).")
             if k == "E3":
                 st.caption(f"R² del modelo por acre (antes de multiplicar por el área): {RES['E3']['r2_acre']:.3f}")
 
@@ -297,6 +308,9 @@ with tab_esc:
                 RES[k]["imp"].sort_values(ascending=False).head(10).sort_values().plot(kind="barh", ax=ax, color=VERDE_CLARO)
                 ax.set_title("Importancia de variables (top 10)")
                 st.pyplot(fig)
+            explica("Izquierda: cada punto es una finca de prueba; si cae sobre la línea roja, la predicción fue exacta. Derecha: "
+                    "qué variables usa más el modelo para decidir. En E1 domina el área; en E3 pasan a pesar el cultivo y el riego, "
+                    "que sí son decisiones del agricultor.")
 
 # ----------------------------------------------------------------------
 # TAB 3: simulador "qué pasa si" (sustento causal basado en el modelo)
@@ -319,20 +333,20 @@ with tab_sim:
 
     s1, s2, s3 = st.columns(3)
     with s1:
-        cultivo = st.selectbox("Cultivo", sorted(df["Crop_Type"].unique()))
-        suelo = st.selectbox("Suelo", sorted(df["Soil_Type"].unique()))
+        cultivo = st.selectbox("Cultivo", sorted(df["Crop_Type"].unique()), help=AYUDA["cultivo"])
+        suelo = st.selectbox("Suelo", sorted(df["Soil_Type"].unique()), help=AYUDA["suelo"])
     with s2:
-        riego = st.selectbox("Tipo de riego", sorted(df["Irrigation_Type"].unique()))
-        temporada = st.selectbox("Temporada", sorted(df["Season"].unique()))
+        riego = st.selectbox("Tipo de riego", sorted(df["Irrigation_Type"].unique()), help=AYUDA["riego"])
+        temporada = st.selectbox("Temporada", sorted(df["Season"].unique()), help=AYUDA["temporada"])
     with s3:
-        area = st.number_input("Área (acres)", 5.0, 400.0, float(round(df["Farm_Area"].median(), 1)), 5.0)
-        fert = st.slider("Fertilizante (t)", 0.5, 10.0, float(round(df["Fertilizer"].mean(), 1)), 0.1)
-        pest = st.slider("Pesticida (kg)", 0.2, 5.0, float(round(df["Pesticide"].mean(), 1)), 0.1)
+        area = st.number_input("Área (acres)", 5.0, 400.0, float(round(df["Farm_Area"].median(), 1)), 5.0, help=AYUDA["area"])
+        fert = st.slider("Fertilizante (t)", 0.5, 10.0, float(round(df["Fertilizer"].mean(), 1)), 0.1, help=AYUDA["fert"])
+        pest = st.slider("Pesticida (kg)", 0.2, 5.0, float(round(df["Pesticide"].mean(), 1)), 0.1, help=AYUDA["pest"])
 
     por_acre = rf3.predict(fila_modelo(cultivo, riego, suelo, temporada, fert, pest))[0]
     r1, r2 = st.columns(2)
-    r1.metric("Rendimiento por acre predicho", f"{por_acre:.3f} t/acre")
-    r2.metric("Rendimiento total predicho", f"{por_acre * area:.1f} t")
+    r1.metric("Rendimiento por acre predicho", f"{por_acre:.3f} t/acre", help="Lo que el Random Forest (E3) espera por cada acre con la combinación elegida.")
+    r2.metric("Rendimiento total predicho", f"{por_acre * area:.1f} t", help="Rendimiento por acre × área.")
 
     st.markdown("**Misma finca, cambiando solo el tipo de riego**")
     filas = []
@@ -342,6 +356,8 @@ with tab_sim:
                       "Cambio vs. selección (t)": (pa - por_acre) * area})
     esc_riego = pd.DataFrame(filas).set_index("Riego").sort_values("t/acre", ascending=False)
     st.dataframe(esc_riego.style.format("{:.2f}"), use_container_width=True)
+    explica("Es la **misma finca** que armó arriba, cambiando solo el riego. La última columna dice cuántas toneladas gana o "
+            "pierde frente a su elección. Así se aísla el efecto de una sola decisión.")
 
     st.divider()
     st.subheader("Efecto promedio en las 600 fincas (contrafactual)")
@@ -361,7 +377,7 @@ with tab_sim:
     contraf = pd.DataFrame(contraf).set_index("Todas con riego").sort_values("Producción total (t)", ascending=False)
     k1, k2 = st.columns([1, 1.2])
     with k1:
-        st.metric("Producción actual estimada", f"{prod_actual:,.0f} t")
+        st.metric("Producción actual estimada", f"{prod_actual:,.0f} t", help="Lo que el modelo predice para las 600 fincas tal como están hoy.")
         st.dataframe(contraf.style.format({"Producción total (t)": "{:,.0f}", "Variación vs. actual (%)": "{:+.1f}"}),
                      use_container_width=True)
     with k2:
@@ -372,6 +388,8 @@ with tab_sim:
         ax.axvline(0, color="black", linewidth=0.8)
         ax.set_xlabel("Variación de la producción total (%)")
         st.pyplot(fig)
+    explica("Se imagina que **todas** las fincas usan el mismo riego (sin cambiar nada más) y se suma lo que producirían. "
+            "Verde = producirían más que hoy; rojo = menos. Es un “¿qué pasaría si…?” hecho con el modelo.")
 
     st.markdown("**Escenarios pesimista / base / optimista (decisión de riego)**")
     esc_pbo = pd.DataFrame({
@@ -382,6 +400,8 @@ with tab_sim:
     esc_pbo["Variación vs. base (%)"] = (esc_pbo["Producción total (t)"] / prod_actual - 1) * 100
     st.dataframe(esc_pbo.style.format({"Producción total (t)": "{:,.0f}", "Variación vs. base (%)": "{:+.1f}"}),
                  use_container_width=True)
+    explica("Los tres escenarios clásicos: **pesimista** (todas sin riego, solo lluvia), **base** (como están hoy) y "
+            "**optimista** (todas con goteo). La distancia entre ellos es lo que está en juego con la decisión de riego.")
 
     st.subheader("Curva de dependencia parcial: fertilizante")
     st.caption("Para cada nivel de fertilizante se fija ese valor en las 600 fincas y se promedia la predicción. "
@@ -397,6 +417,8 @@ with tab_sim:
     ax.set_xlabel("Fertilizante (t)")
     ax.set_ylabel("t/acre promedio predicho")
     st.pyplot(fig)
+    explica("Si la línea sube mucho, echar más fertilizante ayuda; si es casi plana, no. Aquí casi no sube: **más fertilizante "
+            "no garantiza más cosecha**, por eso el plan recomendado no se basa en eso.")
 
 # ----------------------------------------------------------------------
 # TAB 4: conclusiones de gestión
@@ -415,8 +437,8 @@ with tab_concl:
   {tabla.iloc[1]['R²']:.3f}. Quitar la información redundante **no empeora** el modelo, lo hace más simple y
   estable.
 - **Escenario 3 (por acre × área):** R² = {e3['R²']:.3f}, RMSE = {e3['RMSE (t)']:.1f} t. Es el mejor escenario:
-  reduce el error en {(1 - e3['RMSE (t)'] / e1['RMSE (t)']):.0%} frente a la base y supera al XGBoost de la EC1
-  (0.947). Además, las variables importantes pasan a ser de **manejo** (cultivo, riego, fertilizante), que sí son
+  reduce el error en {(1 - e3['RMSE (t)'] / e1['RMSE (t)']):.0%} frente a la base y supera al XGBoost directo
+  del informe (0.938). Además, las variables importantes pasan a ser de **manejo** (cultivo, riego, fertilizante), que sí son
   decisiones del productor.
 - **Simulación:** con todo lo demás igual, pasar todas las fincas a riego **{mejor_riego}** cambia la producción
   total en {contraf.iloc[0]['Variación vs. actual (%)']:+.1f}%, mientras que **{peor_riego}** la cambia en

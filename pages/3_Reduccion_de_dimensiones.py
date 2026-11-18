@@ -20,10 +20,13 @@ from sklearn.ensemble import RandomForestRegressor
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import r2_score, mean_squared_error, mean_absolute_error
 
-st.set_page_config(page_title="Reducción de dimensiones – Caso agrícola", layout="wide")
+st.set_page_config(page_title="Reducción de dimensiones – Caso agrícola", layout="wide", page_icon="📉")
+import sys as _s0, os as _o0
+_s0.path.insert(0, _o0.path.dirname(_o0.path.dirname(_o0.path.abspath(__file__))))
+from estilo import AYUDA, explica  # noqa: E402
 
 # ---------------------------------------------------------------- ENCABEZADO CON NOMBRE (para la captura)
-nombre = st.sidebar.text_input("Nombre para el encabezado", "Grupo 3 · Bajalqui De la Cruz, L. M. · De La Cuba Oliva, F. A. · Perdicci Taboada, G. G.")
+nombre = st.sidebar.text_input("Nombre para el encabezado", help=AYUDA["nombre"], value="Grupo 3 · Bajalqui De la Cruz, L. M. · De La Cuba Oliva, F. A. · Perdicci Taboada, G. G.")
 st.markdown(f"<div style='background:#2C5F2D;color:white;padding:10px 16px;border-radius:8px'>"
             f"<b>{nombre}</b> · Modelamiento predictivo de datos · Reducción de dimensiones del caso agrícola</div>",
             unsafe_allow_html=True)
@@ -39,7 +42,7 @@ guia(["**1️⃣ Diagnóstico:** el mapa de correlación y el VIF muestran qué 
       "**4️⃣ ¿Se pierde precisión?:** compare el R² con todas las variables, sin la redundante y con PCA."])
 
 # ---------------------------------------------------------------- 1. DATOS
-archivo = st.sidebar.file_uploader("CSV (opcional)", type=["csv"])
+archivo = st.sidebar.file_uploader("CSV (opcional)", type=["csv"], help=AYUDA["csv"])
 RUTA = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "agriculture_dataset_synthetic.csv")  # el CSV está en la carpeta raíz de la app
 df = pd.read_csv(archivo) if archivo is not None else (pd.read_csv(RUTA) if os.path.exists(RUTA) else None)
 if df is None:
@@ -106,6 +109,13 @@ with tab1:
         ax.barh(vif.index, vif["VIF"], color=["#B23A48" if v > 10 else "#97BC62" for v in vif["VIF"]])
         ax.axvline(10, color="red", ls="--"); ax.set_title("VIF (rojo = mayor que 10)"); st.pyplot(fig)
         st.dataframe(vif.style.format("{:.2f}"))
+    c1, c2 = st.columns(2)
+    with c1:
+        explica("Cada casilla dice qué tanto se mueven juntas dos variables (de −1 a 1). Verde intenso = suben juntas. "
+                "Área y agua tienen 0.95: las fincas grandes gastan más agua, así que **dicen casi lo mismo**.")
+    with c2:
+        explica("El **VIF** pregunta: ¿puedo adivinar esta variable con las demás? Si sí (VIF > 10, barra roja), la variable "
+                "está repetida. Área y agua pasan la línea roja: una de las dos sobra.")
     st.info("Farm_Area y Water_Usage se correlacionan 0.95 y tienen VIF ≈ 11: dicen casi lo mismo. "
             "Eso justifica reducir dimensiones.")
 
@@ -115,8 +125,13 @@ with tab2:
     pca = PCA().fit(X_std)                                              # PASOS 2–4: covarianza, autovectores, ordenar
     var = pca.explained_variance_ratio_
     acum = np.cumsum(var)
-    k = st.slider("Componentes a conservar", 1, len(NUM), 3)
-    st.metric("Varianza retenida", f"{acum[k-1]*100:.2f}%")
+    explica("**PCA** toma las 4 variables numéricas (área, fertilizante, pesticida y agua) y las reescribe como 4 columnas nuevas "
+            "llamadas **componentes (PC1, PC2, PC3, PC4)**. Cada componente es una mezcla de las originales y van ordenados de "
+            "la que más información guarda a la que menos. Es como resumir un libro: con pocos capítulos clave se entiende casi "
+            "toda la historia.")
+    k = st.slider("Componentes a conservar", 1, len(NUM), 3, help=AYUDA["pca_k"])
+    st.metric("Varianza retenida", f"{acum[k-1]*100:.2f}%",
+              help="Qué porcentaje de la información original se conserva con esa cantidad de componentes.")
     c1, c2 = st.columns(2)
     with c1:
         fig, ax = plt.subplots(figsize=(5, 3.5))
@@ -125,10 +140,15 @@ with tab2:
         ax.axhline(0.95, color="red", ls="--", lw=1, label="95 %")
         ax.set_xlabel("Componente"); ax.set_ylabel("Varianza explicada"); ax.legend(); ax.set_title("Varianza explicada por PCA")
         st.pyplot(fig)
+        explica("Barras = información que guarda cada componente; línea = lo acumulado. Con 3 componentes la línea pasa el 95 % "
+                "(línea roja): el cuarto se puede descartar casi sin perder nada.")
     with c2:
         cargas = pd.DataFrame(pca.components_.T, index=NUM, columns=[f"PC{i+1}" for i in range(len(NUM))])
         st.write("**Cargas:** qué variables forman cada componente")
         st.dataframe(cargas.style.format("{:.2f}").background_gradient(cmap="RdYlGn", axis=None))
+        explica("Las **cargas** dicen de qué está hecho cada componente (valores cerca de ±1 = esa variable pesa mucho). "
+                "**PC1** mezcla casi en partes iguales área y agua: es el **“tamaño” de la finca**. PC2 y PC3 combinan "
+                "fertilizante y pesticida (los insumos). PC4 es la pequeña diferencia entre área y agua y casi no aporta información.")
     Z = pca.transform(X_std)
     fig, ax = plt.subplots(figsize=(7, 4.5))
     sc = ax.scatter(Z[:, 0], Z[:, 1], c=y, cmap="viridis", alpha=0.6, s=15)
@@ -137,6 +157,9 @@ with tab2:
         ax.text(pca.components_[0, i] * 3.3, pca.components_[1, i] * 3.3, v, color="red")
     fig.colorbar(sc, label="Yield (t)"); ax.set_xlabel("PC1"); ax.set_ylabel("PC2"); ax.set_title("Biplot PC1 vs PC2 (color = rendimiento)")
     st.pyplot(fig)
+    explica("Cada punto es una finca ubicada según su PC1 (horizontal) y su PC2 (vertical); el color es su producción. Las "
+            "flechas rojas muestran hacia dónde “empuja” cada variable original. Área y agua apuntan juntas hacia donde están las "
+            "fincas de color claro (más producción): **PC1 = tamaño = producción**.")
     st.info("PC1 junta área y agua (el 'tamaño' de la finca) y se asocia al rendimiento; "
             "con 3 componentes se conserva casi toda la información.")
 
@@ -153,12 +176,23 @@ with tab3:
     with c2:
         fig, ax = plt.subplots(figsize=(5, 4.5)); ax.barh(imp.index, imp.values, color="#2C5F2D")
         ax.set_title("Importancia en Random Forest – top 12"); fig.tight_layout(); st.pyplot(fig)
+    c1, c2 = st.columns(2)
+    with c1:
+        explica("**SelectKBest** prueba cada variable por separado y le pone un puntaje según qué tanto se relaciona con la "
+                "producción. Barra más larga = variable más útil. Área y agua quedan muy arriba; el resto, muy abajo.")
+    with c2:
+        explica("**Importancia en Random Forest**: cuánto usa el modelo cada variable para decidir. Confirma lo mismo: el tamaño "
+                "(área) domina. Las variables con barras casi nulas se pueden quitar sin perder precisión.")
+    st.caption("Los nombres como Crop_Type_Rice o Irrigation_Type_Drip son variables sí/no: valen 1 si la finca es de arroz "
+               "(o tiene riego por goteo) y 0 si no.")
 
 # ---------------------------------------------------------------- 5. ¿SE PIERDE PRECISIÓN AL REDUCIR?
 with tab4:
     X_all = pd.get_dummies(df[NUM + CAT], columns=CAT).astype(float)
     filas = precision_reduccion(X_all, y, k)                            # en caché por cada valor de k
     t = pd.DataFrame(filas).set_index("Escenario")
+    explica("Aquí se comprueba si reducir variables hace daño: el mismo Random Forest se entrena (1) con todas las variables, "
+            "(2) sin el agua y (3) con los componentes de PCA. Si el R² casi no cambia, la reducción vale la pena.")
     st.dataframe(t.style.format({"R²": "{:.3f}", "RMSE (t)": "{:.2f}", "MAE (t)": "{:.2f}"}))
     fig, ax = plt.subplots(figsize=(7, 3)); ax.barh(t.index, t["R²"], color="#2C5F2D"); ax.set_xlim(0.8, 1)
     ax.set_title("R² de Random Forest según la reducción"); st.pyplot(fig)

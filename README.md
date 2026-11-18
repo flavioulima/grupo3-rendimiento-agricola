@@ -8,6 +8,9 @@ pip install -r requirements.txt
 streamlit run Inicio.py
 ```
 
+## Páginas
+- Inicio · 0 Regresión lineal · 1 Random Forest · 2 XGBoost · 3 Reducción de dimensiones (estilo.py tiene el diseño y los textos de ayuda)
+
 ## Publicar gratis en Streamlit Community Cloud
 1. Crear una cuenta en https://github.com y un repositorio **público** nuevo (por ejemplo `grupo3-rendimiento-agricola`).
 2. En el repositorio: **Add file → Upload files** y arrastrar TODO el contenido de esta carpeta

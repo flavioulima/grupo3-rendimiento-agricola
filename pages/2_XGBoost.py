@@ -21,7 +21,10 @@ from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
 from xgboost import XGBClassifier, XGBRegressor
 
-st.set_page_config(page_title="XGBoost – 4 dimensiones", layout="wide", page_icon="🌾")
+st.set_page_config(page_title="XGBoost – 4 dimensiones", layout="wide", page_icon="🐆")
+import sys as _s0, os as _o0
+_s0.path.insert(0, _o0.path.dirname(_o0.path.dirname(_o0.path.abspath(__file__))))
+from estilo import AYUDA, explica  # noqa: E402
 VERDE, GRIS, ROJO, CLARO = "#2C5F2D", "#7F7F7F", "#B23A48", "#97BC62"
 COLOR_ESC = {"Pesimista": ROJO, "Base": GRIS, "Optimista": VERDE}
 
@@ -29,7 +32,7 @@ COLOR_ESC = {"Pesimista": ROJO, "Base": GRIS, "Optimista": VERDE}
 # 1. Datos
 # ---------------------------------------------------------------------------
 RUTA = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "agriculture_dataset_synthetic.csv")  # el CSV está en la carpeta raíz de la app
-archivo = st.sidebar.file_uploader("CSV (opcional)", type=["csv"])
+archivo = st.sidebar.file_uploader("CSV (opcional)", type=["csv"], help=AYUDA["csv"])
 if archivo is not None:
     df = pd.read_csv(archivo)
 elif os.path.exists(RUTA):
@@ -50,27 +53,27 @@ DIM = {
     "D1": dict(nombre="Dimensión 1 · Productividad agrícola", target="Yield", unidad="t",
                feats=["Farm_Area", "Crop_Type", "Irrigation_Type", "Fertilizer", "Pesticide", "Soil_Type", "Season", "Water_Usage"],
                num=["Farm_Area", "Fertilizer", "Pesticide", "Water_Usage"],
-               params=dict(n_estimators=500, max_depth=3, learning_rate=0.03), informe="R² = 0.947 · RMSE = 17.26 t · MAE = 11.07 t"),
+               params=dict(n_estimators=500, max_depth=3, learning_rate=0.03), informe="R² = 0.938 · RMSE = 18.60 t · MAE = 11.80 t"),
     "D2": dict(nombre="Dimensión 2 · Gestión de recursos hídricos", target="Water_Usage", unidad="m³",
                feats=["Farm_Area", "Crop_Type", "Irrigation_Type", "Soil_Type", "Season"], num=["Farm_Area"],
-               params=dict(n_estimators=500, max_depth=3, learning_rate=0.03), informe="R² = 0.886 · RMSE = 8,114 m³ · MAE = 5,852 m³"),
+               params=dict(n_estimators=500, max_depth=3, learning_rate=0.03), informe="R² = 0.881 · RMSE = 8,263 m³ · MAE = 5,967 m³"),
     "D3": dict(nombre="Dimensión 3 · Uso de insumos agroquímicos", target="Yield_per_acre", unidad="t/acre",
                feats=["Fertilizer", "Pesticide", "Crop_Type", "Irrigation_Type", "Soil_Type", "Season"], num=["Fertilizer", "Pesticide"],
-               params=dict(n_estimators=400, max_depth=3, learning_rate=0.05), informe="R² = 0.881 · RMSE = 0.0510 · MAE = 0.0387"),
+               params=dict(n_estimators=400, max_depth=3, learning_rate=0.05), informe="R² = 0.874 · RMSE = 0.0523 · MAE = 0.0399"),
     "D4": dict(nombre="Dimensión 4 · Cultivo y suelo (clasificación)", target="High_Productivity", unidad="",
                feats=["Crop_Type", "Soil_Type", "Season"], num=[],
-               params=dict(n_estimators=300, max_depth=3, learning_rate=0.05), informe="AUC = 0.884 · Accuracy = 0.792 · F1 = 0.793"),
+               params=dict(n_estimators=300, max_depth=3, learning_rate=0.05), informe="AUC = 0.886 · Accuracy = 0.792 · F1 = 0.793"),
 }
 
 # ---------------------------------------------------------------------------
 # 2. Hiperparámetros (opcional: el profe puede pedir cambiarlos)
 # ---------------------------------------------------------------------------
 st.sidebar.header("Hiperparámetros de XGBoost")
-usar_informe = st.sidebar.checkbox("Usar los del informe", value=True)
+usar_informe = st.sidebar.checkbox("Usar los del informe", value=True, help="Marcado: se usan los mismos parámetros del informe y del póster. Desmárquelo para experimentar con los controles.")
 if not usar_informe:
-    n_est = st.sidebar.slider("n_estimators (rondas / árboles)", 50, 1000, 400, 50)
-    prof = st.sidebar.slider("max_depth (profundidad de cada árbol)", 1, 8, 3)
-    lr = st.sidebar.select_slider("learning_rate (tamaño del paso)", [0.01, 0.03, 0.05, 0.1, 0.2, 0.3], 0.05)
+    n_est = st.sidebar.slider("n_estimators (rondas / árboles)", 50, 1000, 400, 50, help=AYUDA["n_estimators"])
+    prof = st.sidebar.slider("max_depth (profundidad de cada árbol)", 1, 8, 3, help=AYUDA["max_depth"])
+    lr = st.sidebar.select_slider("learning_rate (tamaño del paso)", [0.01, 0.03, 0.05, 0.1, 0.2, 0.3], 0.05, help=AYUDA["learning_rate"])
 
 
 def params_de(k):
@@ -145,14 +148,16 @@ with tabs[0]:
             pr = m.predict_proba(Xte)[:, 1]
             filas.append({"Dimensión": DIM[k]["nombre"], "Métrica principal": f"AUC = {roc_auc_score(yte, pr):.3f}",
                           "Otras": f"Accuracy = {accuracy_score(yte, pr >= .5):.3f} · F1 = {f1_score(yte, pr >= .5):.3f}",
-                          "Informe EC1": DIM[k]["informe"]})
+                          "Informe": DIM[k]["informe"]})
         else:
             p = m.predict(Xte)
             filas.append({"Dimensión": DIM[k]["nombre"], "Métrica principal": f"R² = {r2_score(yte, p):.3f}",
                           "Otras": f"RMSE = {mean_squared_error(yte, p) ** .5:,.4g} · MAE = {mean_absolute_error(yte, p):,.4g} {DIM[k]['unidad']}",
-                          "Informe EC1": DIM[k]["informe"]})
+                          "Informe": DIM[k]["informe"]})
     st.dataframe(pd.DataFrame(filas), hide_index=True, use_container_width=True)
-    st.caption("Las pequeñas diferencias con el informe se deben a la versión de la librería xgboost; el método y los parámetros son los mismos.")
+    st.caption("Con «Usar los del informe» marcado, las cifras coinciden con el informe y el póster. Si cambia los parámetros, cambian.")
+    explica("Cada fila es una de las 4 preguntas del caso. Las 3 primeras predicen un número (se miden con **R²**: más cerca de 1, "
+            "mejor); la cuarta predice sí/no —¿productividad alta?— y se mide con **AUC** (0.5 es adivinar, 1 es perfecto).")
     st.markdown("""
 **Escenarios de cada dimensión** (se cambia una decisión en las 600 fincas y el modelo vuelve a predecir):
 
@@ -172,15 +177,15 @@ def bloque_modelo(k):
     if k == "D4":
         pr = m.predict_proba(Xte)[:, 1]
         pred = (pr >= .5).astype(int)
-        c1.metric("AUC-ROC", f"{roc_auc_score(yte, pr):.3f}")
-        c2.metric("Accuracy", f"{accuracy_score(yte, pred):.3f}")
-        c3.metric("F1", f"{f1_score(yte, pred):.3f}")
+        c1.metric("AUC-ROC", f"{roc_auc_score(yte, pr):.3f}", help=AYUDA["AUC"])
+        c2.metric("Accuracy", f"{accuracy_score(yte, pred):.3f}", help=AYUDA["Accuracy"])
+        c3.metric("F1", f"{f1_score(yte, pred):.3f}", help=AYUDA["F1"])
     else:
         p = m.predict(Xte)
-        c1.metric("R² (prueba)", f"{r2_score(yte, p):.3f}", f"train {r2_score(ytr, m.predict(Xtr)):.3f}", delta_color="off")
-        c2.metric("RMSE", f"{mean_squared_error(yte, p) ** .5:,.4g} {d['unidad']}")
-        c3.metric("MAE", f"{mean_absolute_error(yte, p):,.4g} {d['unidad']}")
-    st.caption(f"Informe EC1: {d['informe']} · Parámetros: {params_de(k)}")
+        c1.metric("R² (prueba)", f"{r2_score(yte, p):.3f}", f"train {r2_score(ytr, m.predict(Xtr)):.3f}", delta_color="off", help=AYUDA["R2"] + " " + AYUDA["train"])
+        c2.metric("RMSE", f"{mean_squared_error(yte, p) ** .5:,.4g} {d['unidad']}", help=AYUDA["RMSE"])
+        c3.metric("MAE", f"{mean_absolute_error(yte, p):,.4g} {d['unidad']}", help=AYUDA["MAE"])
+    st.caption(f"Informe: {d['informe']} · Parámetros: {params_de(k)}")
 
     g1, g2, g3 = st.columns(3)
     with g1:
@@ -210,7 +215,16 @@ def bloque_modelo(k):
         ax.legend(fontsize=8)
         st.pyplot(fig)
     if k == "D4":
-        st.write("Matriz de confusión [[VN, FP], [FN, VP]]:", confusion_matrix(yte, pred).tolist())
+        explica("**Izquierda (curva ROC):** mientras más se pegue la curva verde a la esquina de arriba a la izquierda, mejor separa "
+                "las fincas de alta y baja productividad; la línea roja es adivinar al azar. **Centro:** qué datos usa más el modelo. "
+                "**Derecha:** cómo baja el error con cada árbol nuevo (cada uno corrige al anterior).")
+        cm = confusion_matrix(yte, pred)
+        st.write(f"Matriz de confusión: de {cm.sum()} fincas de prueba, acertó {cm[1, 1]} de productividad alta y {cm[0, 0]} "
+                 f"de baja; se equivocó en {cm[0, 1] + cm[1, 0]}.")
+    else:
+        explica("**Izquierda:** cada punto es una finca de prueba; si cae sobre la línea roja, la predicción fue exacta. **Centro:** "
+                "qué datos usa más el modelo para decidir (barra larga = más importante). **Derecha:** cómo baja el error con cada "
+                "árbol nuevo; cuando la línea de prueba deja de bajar, ya no hace falta agregar más árboles.")
 
 
 # ---- D1
@@ -221,8 +235,8 @@ with tabs[1]:
     st.subheader("Escenarios: ¿qué pasa con la producción total si cambia el riego?")
     m = MODELOS["D1"][0]; F = DIM["D1"]["feats"]
     col_a, col_b = st.columns(2)
-    pes = col_a.selectbox("Riego en escenario pesimista", sorted(df.Irrigation_Type.unique()), index=sorted(df.Irrigation_Type.unique()).index("Rain-fed"), key="p1")
-    opt = col_b.selectbox("Riego en escenario optimista", sorted(df.Irrigation_Type.unique()), index=sorted(df.Irrigation_Type.unique()).index("Drip"), key="o1")
+    pes = col_a.selectbox("Riego en escenario pesimista", sorted(df.Irrigation_Type.unique()), index=sorted(df.Irrigation_Type.unique()).index("Rain-fed"), key="p1", help=AYUDA["riego"])
+    opt = col_b.selectbox("Riego en escenario optimista", sorted(df.Irrigation_Type.unique()), index=sorted(df.Irrigation_Type.unique()).index("Drip"), key="o1", help=AYUDA["riego"])
     base = m.predict(df[F]).sum()
     esc = {"Pesimista": m.predict(df[F].assign(Irrigation_Type=pes)).sum(), "Base": base,
            "Optimista": m.predict(df[F].assign(Irrigation_Type=opt)).sum()}
@@ -230,6 +244,8 @@ with tabs[1]:
     a, b = st.columns([1, 1.2])
     a.dataframe(t.style.format({"Producción total (t)": "{:,.0f}", "Variación (%)": "{:+.1f}"}), use_container_width=True)
     b.pyplot(grafico_barras_esc(t, "Producción total (t)", "Producción total por escenario (t)"))
+    explica("Se imagina que **todas** las fincas usan el riego elegido como pesimista u optimista y el modelo vuelve a calcular "
+            "la producción total. Puede cambiar los riegos con las listas de arriba.")
 
 # ---- D2
 with tabs[2]:
@@ -262,8 +278,10 @@ with tabs[3]:
     st.subheader("Escenarios: cambiar la dosis de fertilizante y pesticida")
     m = MODELOS["D3"][0]; F = DIM["D3"]["feats"]
     c1, c2 = st.columns(2)
-    cambio_f = c1.slider("Cambio de fertilizante en el optimista (%)", 0, 50, 20, 5)
-    cambio_p = c2.slider("Reducción de pesticida en el optimista (%)", 0, 50, 20, 5)
+    cambio_f = c1.slider("Cambio de fertilizante en el optimista (%)", 0, 50, 20, 5,
+                         help="Cuánto más fertilizante usan todas las fincas en el optimista (y cuánto menos en el pesimista).")
+    cambio_p = c2.slider("Reducción de pesticida en el optimista (%)", 0, 50, 20, 5,
+                         help="Cuánto menos pesticida usan en el optimista (y cuánto más en el pesimista).")
     def con_insumos(kf, kp):
         Z = df[F].copy()
         Z["Fertilizer"] = (Z["Fertilizer"] * kf).clip(upper=df["Fertilizer"].max())
@@ -297,16 +315,19 @@ with tabs[4]:
     b.pyplot(grafico_barras_esc(t, "Fincas con prob. ≥ 50 %", "Fincas con productividad alta esperada"))
     st.subheader("Simulador")
     s1, s2, s3 = st.columns(3)
-    cultivo = s1.selectbox("Cultivo", sorted(df.Crop_Type.unique()))
-    suelo = s2.selectbox("Suelo", sorted(df.Soil_Type.unique()))
-    temp = s3.selectbox("Temporada", temporadas)
+    cultivo = s1.selectbox("Cultivo", sorted(df.Crop_Type.unique()), help=AYUDA["cultivo"])
+    suelo = s2.selectbox("Suelo", sorted(df.Soil_Type.unique()), help=AYUDA["suelo"])
+    temp = s3.selectbox("Temporada", temporadas, help=AYUDA["temporada"])
     prob = m.predict_proba(pd.DataFrame([{"Crop_Type": cultivo, "Soil_Type": suelo, "Season": temp}]))[0, 1]
-    st.metric("Probabilidad de productividad alta", f"{prob:.0%}")
+    st.metric("Probabilidad de productividad alta", f"{prob:.0%}",
+              help=f"Probabilidad de producir al menos {UMBRAL:.3f} t/acre (la mitad de arriba de las fincas).")
     st.markdown("**Mapa de calor: probabilidad por cultivo y suelo (temporada elegida)**")
     grid = pd.DataFrame([[m.predict_proba(pd.DataFrame([{"Crop_Type": c, "Soil_Type": s, "Season": temp}]))[0, 1]
                           for s in sorted(df.Soil_Type.unique())] for c in sorted(df.Crop_Type.unique())],
                         index=sorted(df.Crop_Type.unique()), columns=sorted(df.Soil_Type.unique()))
     st.dataframe(grid.style.format("{:.0%}").background_gradient(cmap="Greens"), use_container_width=True)
+    explica("Cada casilla es la probabilidad de que esa combinación de cultivo (fila) y suelo (columna) sea de productividad alta "
+            "en la temporada elegida. Verde oscuro = muy probable. Sirve para decidir qué sembrar según el suelo que se tiene.")
 
 # ---- Explicación
 with tabs[5]:

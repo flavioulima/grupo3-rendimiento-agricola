@@ -3,6 +3,7 @@ APP GRUPAL – Modelamiento Predictivo de Datos · Grupo 3
 Caso: Análisis, predicción y prescripción del rendimiento agrícola (600 explotaciones)
 
 Página de inicio. Las demás páginas están en la carpeta pages/:
+  0_Regresion_lineal.py         · regresión lineal, Ridge y Lasso (D1–D3), coeficientes, simulador y comparación
   1_Random_Forest.py            · prototipo con 3 escenarios del modelo + simulador "¿qué pasa si?"
   2_XGBoost.py                  · 4 dimensiones con XGBoost y escenarios
   3_Reduccion_de_dimensiones.py · correlación, VIF, PCA y precisión con menos variables
@@ -56,8 +57,9 @@ guia(["Empiece por **🏠 El caso**: qué problema resolvemos y con qué datos."
       "En **📊 Resultados** vea, dimensión por dimensión, qué modelo acierta más y cómo se lee cada métrica.",
       "En **🧭 Escenarios** compare las decisiones S1–S4 y elija el indicador que quiera mejorar.",
       "En **📖 Glosario** están los términos técnicos explicados en una línea.",
-      "En el menú de la izquierda están los tres prototipos: Random Forest (simulador), XGBoost (4 dimensiones) y "
-      "Reducción de dimensiones."])
+      "En el menú de la izquierda están los cuatro prototipos: **Regresión lineal**, **Random Forest** (simulador), "
+      "**XGBoost** (4 dimensiones) y **Reducción de dimensiones**.",
+      "¿Ve un ícono **?** junto a un número o control? Pase el cursor encima: aparece un globo que explica qué es."])
 
 t_caso, t_res, t_esc, t_glo = st.tabs(["🏠 El caso", "📊 Resultados", "🧭 Escenarios y recomendación", "📖 Glosario"])
 
@@ -177,7 +179,9 @@ with t_esc:
     kpi(c[3], "Productividad hídrica", f"{S4[K[3]]:.2f}", f"{vp(PX.index[-1], K[3]):+.1f} % (misma agua)")
 
     st.subheader("Compare los escenarios")
-    ind = st.selectbox("Elija el indicador (KPI) que quiere mejorar", K)
+    ind = st.selectbox("Elija el indicador (KPI) que quiere mejorar", K,
+                       help="KPI = indicador clave. Producción total (t), rendimiento por acre, % de fincas de productividad alta "
+                            "y toneladas por cada 1,000 m³ de agua.")
     var = (PX[ind] / ACT[ind] - 1) * 100
     c1, c2 = st.columns([1.25, 1])
     c1.dataframe(pd.DataFrame({"Escenario": PX.index, "Valor": PX[ind].round(2 if PX[ind].max() < 1000 else 0),
