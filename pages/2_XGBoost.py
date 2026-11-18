@@ -122,7 +122,17 @@ MODELOS = {k: entrenar(k, tuple(sorted(params_de(k).items()))) for k in DIM}
 # ---------------------------------------------------------------------------
 # 4. Interfaz
 # ---------------------------------------------------------------------------
-st.title("🌾 XGBoost aplicado a las 4 dimensiones del caso agrícola")
+import sys as _sys, os as _os
+_sys.path.insert(0, _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))))  # para importar estilo.py
+from estilo import hero, guia  # noqa: E402
+hero("🐆 XGBoost aplicado a las 4 dimensiones",
+     "Árboles en fila: cada uno corrige el error del anterior. Lo aplicamos a la producción, el agua, los insumos y "
+     "la probabilidad de productividad alta, cada uno con sus escenarios.", img="boost")
+guia(["**📋 Resumen:** tabla con la precisión de XGBoost en cada dimensión frente al modelo base.",
+      "**1️⃣–4️⃣:** en cada pestaña verá el gráfico real vs. predicho (puntos cerca de la diagonal = buen modelo), "
+      "las variables más importantes, la curva de aprendizaje (cómo baja el error ronda a ronda) y un escenario de decisión.",
+      "**🧠 ¿Cómo funciona XGBoost?:** el algoritmo explicado paso a paso.",
+      "En la barra lateral, desmarque «Usar los del informe» para cambiar el número de árboles, la profundidad y la tasa de aprendizaje."])
 st.caption(f"600 explotaciones · partición 80/20 · random_state = 42 · umbral de productividad alta = {UMBRAL:.4f} t/acre")
 
 tabs = st.tabs(["📋 Resumen", "1️⃣ Productividad", "2️⃣ Agua", "3️⃣ Insumos", "4️⃣ Cultivo y suelo", "🧠 ¿Cómo funciona XGBoost?"])

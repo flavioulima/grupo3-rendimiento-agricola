@@ -169,7 +169,19 @@ nombre = st.sidebar.text_input("Nombre para el encabezado", "Grupo 3 · Bajalqui
 st.markdown(f"<div style='background:#2C5F2D;color:white;padding:10px 16px;border-radius:8px'>"
             f"<b>{nombre}</b> · Modelamiento predictivo de datos · Random Forest – 3 escenarios</div>",
             unsafe_allow_html=True)
-st.title("🌳 Random Forest para predecir el rendimiento agrícola")
+import sys as _sys, os as _os
+_sys.path.insert(0, _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))))  # para importar estilo.py
+from estilo import hero, guia  # noqa: E402
+hero("🌳 Random Forest: tres escenarios y simulador",
+     "Cientos de árboles de decisión votan y se promedia su respuesta. Aquí comparamos tres formas de usarlo y "
+     "simulamos qué pasa con el rendimiento si cambia una decisión de manejo.", img="bosque")
+guia(["**1️⃣ Contexto:** mire qué variables se relacionan más con el rendimiento (correlación) y cuáles se repiten (VIF).",
+      "**2️⃣ Tres escenarios:** compare el modelo con todas las variables, sin la variable redundante y con PCA. "
+      "Barra más larga en R² = mejor.",
+      "**3️⃣ Simulador:** elija cultivo, riego, suelo, temporada e insumos y vea la predicción; abajo verá el efecto "
+      "promedio en las 600 fincas.",
+      "**4️⃣ Conclusiones:** qué decisión de gestión se desprende del modelo.",
+      "En la barra lateral puede cambiar el número de árboles y la profundidad para ver cómo cambia la precisión."])
 st.caption("Dimensión 1 de la EC1 (Yield) · Dataset sintético de 600 explotaciones · Mismo split 80/20 "
            f"(random_state = {SEMILLA}) en todos los escenarios")
 

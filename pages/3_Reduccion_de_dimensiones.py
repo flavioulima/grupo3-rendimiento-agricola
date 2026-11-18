@@ -27,7 +27,16 @@ nombre = st.sidebar.text_input("Nombre para el encabezado", "Grupo 3 · Bajalqui
 st.markdown(f"<div style='background:#2C5F2D;color:white;padding:10px 16px;border-radius:8px'>"
             f"<b>{nombre}</b> · Modelamiento predictivo de datos · Reducción de dimensiones del caso agrícola</div>",
             unsafe_allow_html=True)
-st.title("📉 Reducción de dimensiones: ¿cuántas variables necesito realmente?")
+import sys as _sys, os as _os
+_sys.path.insert(0, _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))))  # para importar estilo.py
+from estilo import hero, guia  # noqa: E402
+hero("📉 Reducción de dimensiones: ¿cuántas variables necesito?",
+     "Área y agua dicen casi lo mismo. Aquí vemos qué variables sobran (VIF), cómo resumirlas (PCA) y si el modelo "
+     "pierde precisión al usar menos.", img="trigo")
+guia(["**1️⃣ Diagnóstico:** el mapa de correlación y el VIF muestran qué variables se repiten (VIF > 10 = redundante).",
+      "**2️⃣ PCA:** cuánta información guarda cada componente; con 3 componentes se conserva casi el 99 %.",
+      "**3️⃣ Selección:** qué variables pesan más en el modelo y cuáles se pueden dejar de lado.",
+      "**4️⃣ ¿Se pierde precisión?:** compare el R² con todas las variables, sin la redundante y con PCA."])
 
 # ---------------------------------------------------------------- 1. DATOS
 archivo = st.sidebar.file_uploader("CSV (opcional)", type=["csv"])
