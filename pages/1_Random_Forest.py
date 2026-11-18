@@ -79,7 +79,7 @@ idx_train, idx_test = train_test_split(df.index, test_size=test_size, random_sta
 def nuevo_rf():
     return RandomForestRegressor(
         n_estimators=n_arboles, max_depth=max_depth, min_samples_leaf=min_hoja,
-        random_state=SEMILLA, n_jobs=-1,
+        random_state=SEMILLA, n_jobs=2,
     )
 
 

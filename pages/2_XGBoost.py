@@ -89,10 +89,10 @@ def entrenar(k, params_tuple):
     categ = [c for c in d["feats"] if c in CAT]
     if k == "D4":
         prep = OneHotEncoder(handle_unknown="ignore")
-        modelo = Pipeline([("prep", prep), ("xgb", XGBClassifier(random_state=42, eval_metric="logloss", **params))])
+        modelo = Pipeline([("prep", prep), ("xgb", XGBClassifier(random_state=42, eval_metric="logloss", n_jobs=2, **params))])
     else:
         prep = ColumnTransformer([("num", StandardScaler(), d["num"]), ("cat", OneHotEncoder(handle_unknown="ignore"), categ)])
-        modelo = Pipeline([("prep", prep), ("xgb", XGBRegressor(random_state=42, eval_metric="rmse", **params))])
+        modelo = Pipeline([("prep", prep), ("xgb", XGBRegressor(random_state=42, eval_metric="rmse", n_jobs=2, **params))])
     # eval_set registra el error en cada ronda de boosting (curva de aprendizaje)
     prep_fit = modelo.named_steps["prep"].fit(Xtr)
     modelo.named_steps["xgb"].fit(prep_fit.transform(Xtr), ytr,

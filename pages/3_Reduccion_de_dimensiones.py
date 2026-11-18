@@ -51,6 +51,36 @@ NUM = ["Farm_Area", "Fertilizer", "Pesticide", "Water_Usage"]           # variab
 CAT = ["Crop_Type", "Irrigation_Type", "Soil_Type", "Season"]
 y = df["Yield"]                                                         # variable objetivo
 
+@st.cache_data(show_spinner="Calculando importancia de variables…")
+def importancia_rf(X_all, y):
+    rf = RandomForestRegressor(n_estimators=300, random_state=42, n_jobs=2).fit(X_all, y)
+    return pd.Series(rf.feature_importances_, index=X_all.columns).sort_values().tail(12)
+
+
+@st.cache_data(show_spinner="Entrenando Random Forest con menos variables…")
+def precision_reduccion(X_all, y, k):
+    """R², RMSE y MAE de Random Forest con todas las variables, sin Water_Usage y con PCA (k componentes)."""
+    Xtr, Xte, ytr, yte = train_test_split(X_all, y, test_size=0.2, random_state=42)
+    sc_ = StandardScaler().fit(Xtr[NUM]); p_ = PCA(n_components=k).fit(sc_.transform(Xtr[NUM]))
+
+    def con_pca(D):
+        comp = pd.DataFrame(p_.transform(sc_.transform(D[NUM])), index=D.index, columns=[f"PC{i+1}" for i in range(k)])
+        return pd.concat([comp, D.drop(columns=NUM)], axis=1)
+
+    escenarios = {
+        "Todas las variables": (Xtr, Xte),
+        "Sin Water_Usage (VIF > 10)": (Xtr.drop(columns="Water_Usage"), Xte.drop(columns="Water_Usage")),
+        f"PCA ({k} componentes) + categóricas": (con_pca(Xtr), con_pca(Xte)),
+    }
+    filas = []
+    for n, (a, b) in escenarios.items():
+        m = RandomForestRegressor(n_estimators=300, random_state=42, n_jobs=2).fit(a, ytr)
+        p = m.predict(b)
+        filas.append({"Escenario": n, "N.° variables": a.shape[1], "R²": r2_score(yte, p),
+                      "RMSE (t)": mean_squared_error(yte, p) ** 0.5, "MAE (t)": mean_absolute_error(yte, p)})
+    return filas
+
+
 tab1, tab2, tab3, tab4 = st.tabs(["1️⃣ Diagnóstico (correlación y VIF)", "2️⃣ PCA", "3️⃣ Selección de variables", "4️⃣ ¿Se pierde precisión?"])
 
 # ---------------------------------------------------------------- 2. DIAGNÓSTICO: ¿hay información repetida?
@@ -115,8 +145,7 @@ with tab3:
     X_all = pd.get_dummies(df[NUM + CAT], columns=CAT).astype(float)
     sel = SelectKBest(f_regression, k="all").fit(X_all, y)              # F de regresión de cada variable con Yield
     puntaje = pd.Series(sel.scores_, index=X_all.columns).sort_values().tail(12)
-    rf = RandomForestRegressor(n_estimators=300, random_state=42, n_jobs=-1).fit(X_all, y)
-    imp = pd.Series(rf.feature_importances_, index=X_all.columns).sort_values().tail(12)
+    imp = importancia_rf(X_all, y)                                       # en caché: no se reentrena en cada clic
     c1, c2 = st.columns(2)
     with c1:
         fig, ax = plt.subplots(figsize=(5, 4.5)); ax.barh(puntaje.index, puntaje.values, color="#97BC62")
@@ -128,24 +157,7 @@ with tab3:
 # ---------------------------------------------------------------- 5. ¿SE PIERDE PRECISIÓN AL REDUCIR?
 with tab4:
     X_all = pd.get_dummies(df[NUM + CAT], columns=CAT).astype(float)
-    Xtr, Xte, ytr, yte = train_test_split(X_all, y, test_size=0.2, random_state=42)
-    sc_ = StandardScaler().fit(Xtr[NUM]); p_ = PCA(n_components=k).fit(sc_.transform(Xtr[NUM]))
-
-    def con_pca(D):
-        comp = pd.DataFrame(p_.transform(sc_.transform(D[NUM])), index=D.index, columns=[f"PC{i+1}" for i in range(k)])
-        return pd.concat([comp, D.drop(columns=NUM)], axis=1)
-
-    escenarios = {
-        "Todas las variables": (Xtr, Xte),
-        "Sin Water_Usage (VIF > 10)": (Xtr.drop(columns="Water_Usage"), Xte.drop(columns="Water_Usage")),
-        f"PCA ({k} componentes) + categóricas": (con_pca(Xtr), con_pca(Xte)),
-    }
-    filas = []
-    for n, (a, b) in escenarios.items():
-        m = RandomForestRegressor(n_estimators=300, random_state=42, n_jobs=-1).fit(a, ytr)
-        p = m.predict(b)
-        filas.append({"Escenario": n, "N.° variables": a.shape[1], "R²": r2_score(yte, p),
-                      "RMSE (t)": mean_squared_error(yte, p) ** 0.5, "MAE (t)": mean_absolute_error(yte, p)})
+    filas = precision_reduccion(X_all, y, k)                            # en caché por cada valor de k
     t = pd.DataFrame(filas).set_index("Escenario")
     st.dataframe(t.style.format({"R²": "{:.3f}", "RMSE (t)": "{:.2f}", "MAE (t)": "{:.2f}"}))
     fig, ax = plt.subplots(figsize=(7, 3)); ax.barh(t.index, t["R²"], color="#2C5F2D"); ax.set_xlim(0.8, 1)
